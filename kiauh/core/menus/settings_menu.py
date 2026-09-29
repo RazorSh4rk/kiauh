@@ -21,6 +21,7 @@ from core.menus.repo_select_menu import RepoSelectMenu
 from core.settings.kiauh_settings import KiauhSettings
 from core.types.color import Color
 from core.types.component_status import ComponentStatus
+from procedures.system import apply_linux_optimizations
 
 
 # noinspection PyUnusedLocal
@@ -35,6 +36,7 @@ class SettingsMenu(BaseMenu):
         self.mainsail_unstable: bool | None = None
         self.fluidd_unstable: bool | None = None
         self.auto_backups_enabled: bool | None = None
+        self.optimize_install: bool | None = None
 
         na: str = "Not available!"
         self.kl_repo_url: str = Color.apply(na, Color.RED)
@@ -56,6 +58,7 @@ class SettingsMenu(BaseMenu):
             "3": Option(method=self.toggle_mainsail_release),
             "4": Option(method=self.toggle_fluidd_release),
             "5": Option(method=self.toggle_backup_before_update),
+            "6": Option(method=self.toggle_optimize_install),
         }
 
     def print_menu(self) -> None:
@@ -65,6 +68,7 @@ class SettingsMenu(BaseMenu):
         o1 = checked if self.mainsail_unstable else unchecked
         o2 = checked if self.fluidd_unstable else unchecked
         o3 = checked if self.auto_backups_enabled else unchecked
+        o4 = checked if self.optimize_install else unchecked
         menu = textwrap.dedent(
             f"""
             ╟───────────────────────────────────────────────────────╢
@@ -85,6 +89,9 @@ class SettingsMenu(BaseMenu):
             ║ Auto-Backup:                                          ║
             ║ 5) {o3} Backup before update                           ║
             ╟───────────────────────────────────────────────────────╢
+            ║ Low-Resource Devices:                                 ║
+            ║ 6) {o4} Optimize installation                          ║
+            ╟───────────────────────────────────────────────────────╢
             """
         )[1:]
         print(menu, end="")
@@ -92,6 +99,7 @@ class SettingsMenu(BaseMenu):
     def _load_settings(self) -> None:
         self.settings = KiauhSettings()
         self.auto_backups_enabled = self.settings.kiauh.backup_before_update
+        self.optimize_install = self.settings.kiauh.optimize_install
         self.mainsail_unstable = self.settings.mainsail.unstable_releases
         self.fluidd_unstable = self.settings.fluidd.unstable_releases
 
@@ -138,4 +146,17 @@ class SettingsMenu(BaseMenu):
     def toggle_backup_before_update(self, **kwargs) -> None:
         self.auto_backups_enabled = not self.auto_backups_enabled
         self.settings.kiauh.backup_before_update = self.auto_backups_enabled
+        self.settings.save()
+
+    def toggle_optimize_install(self, **kwargs) -> None:
+        enabled = not self.optimize_install
+
+        # Enabling also changes the running system, so it only takes effect once
+        # the user confirmed the changes. Disabling just flips the flag back and
+        # leaves the system services alone.
+        if enabled and not apply_linux_optimizations():
+            return
+
+        self.optimize_install = enabled
+        self.settings.kiauh.optimize_install = enabled
         self.settings.save()

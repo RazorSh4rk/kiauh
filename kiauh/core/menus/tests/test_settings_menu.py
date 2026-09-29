@@ -21,6 +21,7 @@ def patched_settings_menu(monkeypatch: pytest.MonkeyPatch) -> SettingsMenu:
 
     class FakeKiauh:
         backup_before_update = True
+        optimize_install = False
 
     class FakeSettings:
         kiauh = FakeKiauh()
@@ -49,10 +50,13 @@ def patched_settings_menu(monkeypatch: pytest.MonkeyPatch) -> SettingsMenu:
 
 class TestSettingsMenuConstruction:
     def test_options_cover_settings(self, patched_settings_menu: SettingsMenu) -> None:
-        assert {"1", "2", "3", "4", "5"}.issubset(patched_settings_menu.options)
+        assert {"1", "2", "3", "4", "5", "6"}.issubset(patched_settings_menu.options)
 
     def test_loads_backup_setting(self, patched_settings_menu: SettingsMenu) -> None:
         assert patched_settings_menu.auto_backups_enabled is True
+
+    def test_loads_optimize_setting(self, patched_settings_menu: SettingsMenu) -> None:
+        assert patched_settings_menu.optimize_install is False
 
 
 class TestToggleMethods:
@@ -72,3 +76,47 @@ class TestToggleMethods:
         patched_settings_menu.auto_backups_enabled = True
         patched_settings_menu.toggle_backup_before_update()
         assert patched_settings_menu.auto_backups_enabled is False
+
+
+class TestOptimizeInstallToggle:
+    def test_enabling_applies_linux_optimizations(
+        self, patched_settings_menu: SettingsMenu, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls = []
+        monkeypatch.setattr(
+            "core.menus.settings_menu.apply_linux_optimizations",
+            lambda: calls.append(True) or True,
+        )
+
+        patched_settings_menu.optimize_install = False
+        patched_settings_menu.toggle_optimize_install()
+
+        assert calls == [True]
+        assert patched_settings_menu.optimize_install is True
+
+    def test_enabling_is_aborted_when_user_declines(
+        self, patched_settings_menu: SettingsMenu, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "core.menus.settings_menu.apply_linux_optimizations", lambda: False
+        )
+
+        patched_settings_menu.optimize_install = False
+        patched_settings_menu.toggle_optimize_install()
+
+        assert patched_settings_menu.optimize_install is False
+
+    def test_disabling_leaves_the_system_alone(
+        self, patched_settings_menu: SettingsMenu, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls = []
+        monkeypatch.setattr(
+            "core.menus.settings_menu.apply_linux_optimizations",
+            lambda: calls.append(True) or True,
+        )
+
+        patched_settings_menu.optimize_install = True
+        patched_settings_menu.toggle_optimize_install()
+
+        assert calls == []
+        assert patched_settings_menu.optimize_install is False

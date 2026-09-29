@@ -277,6 +277,35 @@ def get_download_url(base_url: str, client: BaseWebClient) -> str:
 #################################################
 
 
+NGINX_GZIP_ON = """\
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_proxied expired no-cache no-store private auth;
+    gzip_comp_level 4;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/x-javascript application/json application/xml;
+"""
+
+NGINX_GZIP_OFF = """\
+    # gzip is disabled by the 'optimize installation' setting: compressing on a
+    # single core costs more CPU than it saves on a local network.
+"""
+
+
+def get_nginx_gzip_block() -> str:
+    """
+    Return the gzip section for a generated NGINX config.
+    The 'optimize installation' setting omits gzip, as a low resource host
+    spends more CPU compressing responses than it saves on bandwidth.
+    :return: The gzip config section for the current settings
+    """
+    if KiauhSettings().kiauh.optimize_install:
+        return NGINX_GZIP_OFF
+    return NGINX_GZIP_ON
+
+
 def copy_upstream_nginx_cfg() -> None:
     """
     Creates an upstream.conf in /etc/nginx/conf.d
@@ -350,6 +379,8 @@ def create_nginx_cfg(
 
     try:
         Logger.print_status(f"Creating NGINX config for {display_name} ...")
+
+        kwargs.setdefault("GZIP", get_nginx_gzip_block())
 
         source = NGINX_SITES_AVAILABLE.joinpath(cfg_name)
         target = NGINX_SITES_ENABLED.joinpath(cfg_name)

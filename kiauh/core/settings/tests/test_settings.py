@@ -17,6 +17,7 @@ from core.settings.kiauh_settings import KiauhSettings
 DEFAULT_CFG_CONTENT = """\
 [kiauh]
 backup_before_update: False
+optimize_install: False
 
 [klipper]
 repositories:
@@ -84,6 +85,23 @@ class TestKiauhSettings:
     def test_get_returns_value(self, cfg_paths) -> None:
         settings = KiauhSettings()
         assert settings.get("mainsail", "port") == 80
+
+    def test_optimize_install_defaults_to_false(self, cfg_paths) -> None:
+        settings = KiauhSettings()
+        assert settings.kiauh.optimize_install is False
+
+    def test_optimize_install_persists_on_save(self, cfg_paths) -> None:
+        _, custom = cfg_paths
+        settings = KiauhSettings()
+        settings.kiauh.optimize_install = True
+        settings.save()
+
+        assert "optimize_install: True" in custom.read_text()
+
+        # a freshly loaded instance has to see the saved value
+        KiauhSettings._KiauhSettings__instance = None
+        KiauhSettings._KiauhSettings__initialized = False
+        assert KiauhSettings().kiauh.optimize_install is True
 
     def test_missing_config_calls_kill(self, cfg_paths, monkeypatch) -> None:
         from core.settings import kiauh_settings as ks

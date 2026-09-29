@@ -27,6 +27,7 @@ from components.webui_client.client_utils import (
     get_existing_clients,
     get_local_client_version,
     get_next_free_port,
+    get_nginx_gzip_block,
     get_nginx_listen_port,
     get_remote_client_version,
     read_ports_from_nginx_configs,
@@ -410,3 +411,37 @@ class TestGetExistingClients:
         )
 
         assert get_existing_clients() == []
+
+
+def _patch_optimize_install(monkeypatch, enabled: bool) -> None:
+    fake = SimpleNamespace(kiauh=SimpleNamespace(optimize_install=enabled))
+    monkeypatch.setattr(client_utils, "KiauhSettings", lambda: fake)
+
+
+class TestGetNginxGzipBlock:
+    def test_gzip_is_on_by_default(self, monkeypatch) -> None:
+        _patch_optimize_install(monkeypatch, False)
+
+        block = get_nginx_gzip_block()
+
+        assert "gzip on;" in block
+        assert "gzip_types" in block
+
+    def test_optimize_install_turns_gzip_off(self, monkeypatch) -> None:
+        _patch_optimize_install(monkeypatch, True)
+
+        block = get_nginx_gzip_block()
+
+        assert "gzip on;" not in block
+        assert "gzip_types" not in block
+        assert "disabled" in block
+
+    def test_the_two_variants_are_never_mixed(self, monkeypatch) -> None:
+        _patch_optimize_install(monkeypatch, False)
+        on_variant = get_nginx_gzip_block()
+        _patch_optimize_install(monkeypatch, True)
+        off_variant = get_nginx_gzip_block()
+
+        assert on_variant != off_variant
+        assert on_variant == client_utils.NGINX_GZIP_ON
+        assert off_variant == client_utils.NGINX_GZIP_OFF
