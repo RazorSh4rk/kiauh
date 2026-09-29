@@ -440,9 +440,15 @@ class MoonrakerSetupService:
                 interactive=interactive,
             ):
                 install_python_requirements(MOONRAKER_ENV_DIR, MOONRAKER_REQ_FILE)
-                if self.settings.moonraker.optional_speedups:
+                if self.settings.moonraker.optional_speedups and not (
+                    self.settings.kiauh.optimize_install
+                ):
                     install_python_requirements(
                         MOONRAKER_ENV_DIR, MOONRAKER_SPEEDUPS_REQ_FILE
+                    )
+                elif self.settings.kiauh.optimize_install:
+                    Logger.print_info(
+                        "Skipping Moonraker speedups (optimize install is enabled)."
                     )
             self._install_polkit()
         except Exception:

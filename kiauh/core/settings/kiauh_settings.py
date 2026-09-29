@@ -42,6 +42,7 @@ class InvalidValueError(Exception):
 @dataclass
 class AppSettings:
     backup_before_update: bool | None = field(default=None)
+    optimize_install: bool | None = field(default=None)
 
 
 @dataclass
@@ -155,6 +156,12 @@ class KiauhSettings:
         self.kiauh.backup_before_update = self.__read_from_cfg(
             "kiauh",
             "backup_before_update",
+            self.config.getboolean,
+            False,
+        )
+        self.kiauh.optimize_install = self.__read_from_cfg(
+            "kiauh",
+            "optimize_install",
             self.config.getboolean,
             False,
         )
@@ -299,6 +306,13 @@ class KiauhSettings:
                 "kiauh",
                 "backup_before_update",
                 str(self.kiauh.backup_before_update),
+            )
+
+        if self.kiauh.optimize_install is not None:
+            self.config.set_option(
+                "kiauh",
+                "optimize_install",
+                str(self.kiauh.optimize_install),
             )
 
         # Handle repositories
